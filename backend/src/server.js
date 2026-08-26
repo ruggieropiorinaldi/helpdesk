@@ -7,6 +7,8 @@ import cors from 'cors'; //autorizzo il frontend a fare richieste a questo backe
 
 import mongoose from 'mongoose'; //importo la libreria che ci fa comunicare con MongoDB
 
+import userRoutes from './routes/userRoutes.js'; //importo le routes degli user
+
 import ticketRoutes from './routes/ticketRoutes.js'; // Importo il router dei ticket definito nell'altro file
 
 const app = express(); //creo l'applicazione. "app" è l'oggetto dove registrerò tutti i middleware e le rotte
@@ -33,11 +35,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Il backend è vivo!' });
 });
 
-// Collego il router: tutte le sue rotte partiranno da /api/tickets.
+// Collego il router: tutte le sue rotte partiranno o da "/api/tickets" o da "/api/users"
 // Il '/' definito dentro ticketRoutes.js diventa /api/tickets,
 // il '/:id' diventa /api/tickets/:id, e così via.
 app.use('/api/tickets', ticketRoutes);
-
+app.use('/api/users', userRoutes);
 // Questo middleware sta dopo tutte le rotte, quindi si arriva qiu solo se non si è trovata la rotta giusta corrispondente
 app.use((req, res) => {
   res.status(404).json({ message: 'Rotta non trovata' });

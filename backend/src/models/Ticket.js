@@ -29,6 +29,20 @@ const ticketSchema = new mongoose.Schema(
       enum: ['aperto', 'assegnato', 'in_lavorazione', 'risolto', 'chiuso'], //ciclo di vita di un ticket...
       default: 'aperto', //aperto perchè appena lo creamo è aperto
     },
+
+    creatoDa: {
+      //serve per indicare l'autore che ha creato il ticket
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User', //quindi fa riferimento a un oggetto (User, con ruolo "utente")
+      required: true,
+    },
+
+    assegnatoA: {
+      //serve per indicare il tecnico a cui è stato affidato
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User', //quindi fa sempre riferimento a un oggetto (User, con ruolo "tecnico")
+      default: null,
+    },
   },
 
   { timestamps: true }, //aggiunge due campi ad ogni documento
