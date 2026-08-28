@@ -2,6 +2,11 @@
 
 import express from 'express';
 
+import authenticate from '../middleware/authenticate.js';
+import authorize from '../middleware/authorize.js';
+
+import { puoVedereIlTicket } from '../utils/permessi.js';
+
 import Comment from '../models/Comment.js';
 
 import Ticket from '../models/Ticket.js'; // Importo il model: mi serve per parlare col database.
@@ -10,23 +15,31 @@ import Ticket from '../models/Ticket.js'; // Importo il model: mi serve per parl
 //una rotta è l'abbinazione tra metodo HTTP (quindi GET o POST) e PERCORSO a cui il server o frontend fanno riferimento
 const router = express.Router();
 
+//applica questo middleware a tutte le rotte. questo perchè ripetere authenticate su ogni rotta è meglio ora,
+//piuttosto che aggiungere una rotta in futuro e dimenticarci di authenticarla
+//in questo modo ogni rotta adesso è creata per rispondere solo a un user con token valido
+router.use(authenticate);
+
 // GET /api/tickets  ->  viene richiesta la lista di tutti i ticket
 // La funzione è async perché parlare col database richiede tempo, e dobbiamo aspettare con await.
 router.get('/', async (req, res) => {
   try {
-    // find() senza argomenti restituisce tutti i documenti.
-    // sort({ createdAt: -1 }) li ordina per data di creazione crescente
-    const tickets = await Ticket.find() //find() senza niente indica tutti
-      //quando mi stampi i campi del ticket, quando arrivi a "creatoDa" non lasciarmi l'id:
-      // vai a prendere l'utente vero e mettici il suo nome e email vero
-      //possiamo farlo perchè sappiamo che il campo "creatoDa" fa un riferimento, in particoalare ad un oggetto
-      //quindi ci basta dire quali campi di quell'oggetto vogliamo vedere (nome e email in questo caso)
-      .populate('creatoDa', 'nome email')
-      .populate('assegnatoA', 'nome email') //idem per assegnatoA
-      .sort({ createdAt: -1 }); //ordinameli dal ticket creato piu recentemente
-    res.json(tickets); // res.json() manda la risposta convertita in JSON
+    // Costruiamo il filtro guardando CHI sta chiedendo.
+    const filtro = {};
+    if (req.user.ruolo === 'utente') {
+      // vede solo i ticket che ha aperto lui
+      filtro.creatoDa = req.user._id;
+    } else if (req.user.ruolo === 'tecnico') {
+      // vede solo quelli assegnati a lui
+      filtro.assegnatoA = req.user._id;
+    }
+    // Se e' admin non aggiungiamo niente: filtro resta {}, e find({}) restituisce tutto.
+    const tickets = await Ticket.find(filtro)
+      .populate('creatoDa', 'nome email') //creatoDa contiene l'id di un user. la funzione "poplulate" prende i dati che scrivo dopo "nome email" direttamente dall'oggetto
+      .populate('assegnatoA', 'nome email')
+      .sort({ createdAt: -1 });
+    res.json(tickets);
   } catch (errore) {
-    // Ci finiamo solo se il database non risponde 500 = errore del server, non colpa di chi ha chiesto.
     res.status(500).json({ message: errore.message });
   }
 });
@@ -43,60 +56,80 @@ router.get('/', async (req, res) => {
 //che è proprio il n ome del ticket specifico che voglio
 router.get('/:id', async (req, res) => {
   try {
-    const ticket = await Ticket.findById(req.params.id) //è un find() particolare perchè cerca in base all'id (findId())
+    const ticket = await Ticket.findById(req.params.id)
       .populate('creatoDa', 'nome email')
       .populate('assegnatoA', 'nome email');
-
-    //se ticket non c'è, faccio return altrimenti continuerebbesenza riscontro
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket non trovato' });
     }
-    res.json(ticket); //converto in formato JSON
+    //richiamo la funzione da "permessi" e controllo se quello user può visualizzare quel ticket
+    if (!puoVedereIlTicket(req.user, ticket)) {
+      return res.status(403).json({ message: 'Permesso negato' });
+    }
+    res.json(ticket);
   } catch (errore) {
-    // Qui ci arriviamo se l'id non ha la forma di un ObjectId
-    // (per esempio /api/tickets/pippo). 400 = richiesta sbagliata.
     res.status(400).json({ message: 'ID non valido' });
   }
 });
 
 // POST /api/tickets  ->  viene chiedo di creare un nuovo ticket
-router.post('/', async (req, res) => {
+router.post('/', authorize('utente'), async (req, res) => {
   try {
-    // req.body contiene il JSON mandato da chi fa la richiesta.
-    // create() valida i dati secondo lo schema e li salva.
-    const nuovoTicket = await Ticket.create(req.body);
-    // 201 = creato. È il codice corretto dopo una POST che produce una nuova risorsa
+    const { titolo, descrizione, categoria, priorita } = req.body;
+    const nuovoTicket = await Ticket.create({
+      titolo,
+      descrizione,
+      categoria,
+      priorita,
+      creatoDa: req.user._id, //il ruolo non lo impostiamo piu noi, lo prendiamo direttamente dal token
+    });
     res.status(201).json(nuovoTicket);
   } catch (errore) {
-    // Ci arriviamo se la validazione fallisce: manca il titolo, la priorità non è fra quelle ammesse, eccetera.
-    // 400 perché la colpa è dei dati mandati.
     res.status(400).json({ message: errore.message });
   }
 });
 
-// PATCH /api/tickets/:id  ->  modifica un ticket esistente
-// PATCH si usa per cambiare ALCUNI campi.
-// (PUT invece sostituirebbe l'intero documento: a noi non serve perchè vogliamo modificare solo qualcosa di un ticket gia creato)
-//per poterlo fare ovviamente ci serve l'id del ticket specifico
+// PATCH: modifica. Il proprietario puo' correggere il suo ticket,
+// l'admin puo' intervenire su tutti (gli serve per assegnarli).
 router.patch('/:id', async (req, res) => {
   try {
-    const ticket = await Ticket.findByIdAndUpdate(
-      req.params.id, // quale documento
-      req.body, // cosa cambiare
-      {
-        // new: true -> restituisci il documento DOPO la modifica, altrimenti senza riceverei la versione vecchia
-        new: true,
-        // runValidators: true -> applica anche durante le modifiche le regole dello schema.
-        // Di default Mongoose le controlla solo alla creazione
-        runValidators: true,
-      },
-    );
+    const ticket = await Ticket.findById(req.params.id); //prima controllo che il ticket esista
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket non trovato' });
     }
-    res.json(ticket);
+    //devo controllare se chi vuole visualizzarlo è il proprietario del ticket (ovvero chi lha aperto)
+    //quindi eProprietario restituisce true o false
+    const eProprietario =
+      req.user.ruolo === 'utente' &&
+      ticket.creatoDa.toString() === req.user._id.toString();
+    //se lo user che vuole visualizzare non è ticket (quindi non puo vedere tutto)
+    //e se non è neanche il proprietario di chi ha aperto quel ticket,
+    //allora non puo vederlo
+    if (req.user.ruolo !== 'admin' && !eProprietario) {
+      return res.status(403).json({ message: 'Permesso negato' });
+    }
+    //se arrivo fin qui allora ho il permesso per modificare il ticket
+    const aggiornato = await Ticket.findByIdAndUpdate(req.params.id, req.body, {
+      new: true, //fa restituire la versione aggiornata anziche quella vecchia
+      runValidators: true, //attivo comunque i controlli di schema anche in fase di modifica
+    });
+    res.json(aggiornato); //restituisco il ticket modificato
   } catch (errore) {
     res.status(400).json({ message: errore.message });
+  }
+});
+
+// DELETE: solo l'amministratore. Qui basta authorize,
+// non serve nessun controllo aggiuntivo.
+router.delete('/:id', authorize('admin'), async (req, res) => {
+  try {
+    const ticket = await Ticket.findByIdAndDelete(req.params.id);
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket non trovato' });
+    }
+    res.json({ message: 'Ticket eliminato' });
+  } catch (errore) {
+    res.status(400).json({ message: 'ID non valido' });
   }
 });
 
@@ -117,34 +150,65 @@ router.delete('/:id', async (req, res) => {
 
 //aggiungo le ROUTES che partono dai ticket
 
-// GET /api/tickets/:id/commenti  -> viene chiesto di leggere i commenti di un ticket
+// GET /api/tickets/:id/commenti  ->  legge i commenti di un ticket
 router.get('/:id/commenti', async (req, res) => {
   try {
-    const commenti = await Comment.find({ ticket: req.params.id }) //filtro perchè voglio i commenti solo del ticket con l'id che specifico
+    // 1. il ticket esiste?
+    const ticket = await Ticket.findById(req.params.id);
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket non trovato' });
+    }
+
+    // 2. chi sta chiedendo ha il diritto di vedere QUESTO ticket?
+    if (!puoVedereIlTicket(req.user, ticket)) {
+      return res.status(403).json({ message: 'Permesso negato' });
+    }
+
+    // 3. prendo tutti i commenti che appartengono a questo ticket,
+    //    di chiunque li abbia scritti
+    const commenti = await Comment.find({ ticket: req.params.id })
+      // sostituisco l'id dell'autore con nome e ruolo, per poterli mostrare
       .populate('autore', 'nome ruolo')
-      .sort({ createdAt: 1 }); //mostro i commenti dal piu vecchio al piu recente (perchè è l'ordine con cui leggo una conversazione)
+      // dal più vecchio al più recente: si legge come una conversazione
+      .sort({ createdAt: 1 });
+
     res.json(commenti);
   } catch (errore) {
     res.status(400).json({ message: 'ID non valido' });
   }
 });
 
-// POST /api/tickets/:id/commenti  ->  viene richiesto di aggiungerwe un commento ad uno specifico ticket
+// POST /api/tickets/:id/commenti  ->  aggiunge un commento a un ticket
 router.post('/:id/commenti', async (req, res) => {
   try {
+    // 1. il ticket esiste?
     const ticket = await Ticket.findById(req.params.id);
     if (!ticket) {
-      //se l'id del ticket che voglio commentare non esiste
       return res.status(404).json({ message: 'Ticket non trovato' });
     }
 
+    // 2. chi sta scrivendo ha il diritto di scrivere?
+    if (!puoVedereIlTicket(req.user, ticket)) {
+      return res.status(403).json({ message: 'Permesso negato' });
+    }
+
+    // 3. costruisco il commento campo per campo, e ogni campo viene
+    //    da una fonte diversa e ben precisa:
     const nuovoCommento = await Comment.create({
-      ticket: req.params.id, //l'id lo prendiamo dal ticket passato come parametro
-      autore: req.body.autore,
+      // dall'URL: il ticket lo decide l'indirizzo, non chi chiama
+      ticket: req.params.id,
+
+      // dal token: l'autore lo sa il server, il client non può mentire
+      autore: req.user._id,
+
+      // dal body: l'unica cosa che il client ha davvero il diritto di scegliere
       testo: req.body.testo,
     });
+
+    // 201 = creato. È il codice giusto dopo una POST che produce
     res.status(201).json(nuovoCommento);
   } catch (errore) {
+    // Ci finiamo se la validazione fallisce (per esempio testo mancante) o se l'id non ha la forma di un ObjectId.
     res.status(400).json({ message: errore.message });
   }
 });
