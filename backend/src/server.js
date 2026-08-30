@@ -1,6 +1,9 @@
 //contiene il database e accende il server
 import 'dotenv/config'; //le variabili d'ambiente devono essere caricate prima che qualunque altro file provi a leggerle
 
+import notFound from './middleware/notFound.js';
+import errorHandler from './middleware/errorHandler.js';
+
 import express from 'express'; //importo il framework che gestisce server, rotte, middlewae
 
 import cors from 'cors'; //autorizzo il frontend a fare richieste a questo backend
@@ -47,6 +50,12 @@ app.use('/api/auth', authRoutes);
 app.use((req, res) => {
   res.status(404).json({ message: 'Rotta non trovata' });
 });
+
+//questi middleware dobbiamo metterli in fondo per ultimi perchè
+//se li mettessimo all'inizio, non diamo tempo di poter vedere se la rotta richiesta c'è
+//o se è scritta correttamente, quindi andrebbe direttamente in not found
+app.use(notFound);
+app.use(errorHandler);
 
 // AVVIO
 // La funzione è async perché connettersi al database richiede del tempo, e con await possiamo aspettare che finisca

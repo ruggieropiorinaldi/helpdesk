@@ -5,6 +5,12 @@ import express from 'express';
 import authenticate from '../middleware/authenticate.js';
 import authorize from '../middleware/authorize.js';
 
+import ApiError from '../utils/ApiError.js';
+import asyncHandler from '../utils/AsyncHandler.js';
+
+import { transizioneAmmessa } from '../utils/ticketStateMachine.js';
+import User from '../models/User.js';
+
 import { puoVedereIlTicket } from '../utils/permessi.js';
 
 import Comment from '../models/Comment.js';
@@ -54,23 +60,23 @@ router.get('/', async (req, res) => {
 // GET /api/tickets/:id  ->  viene richiesto un ticket singolo
 // I due punti in ':id' indicano che nel percorso ci sarà una parte variabile
 //che è proprio il n ome del ticket specifico che voglio
-router.get('/:id', async (req, res) => {
-  try {
+router.get(
+  '/:id',
+  asyncHandler(async (req, res) => {
     const ticket = await Ticket.findById(req.params.id)
       .populate('creatoDa', 'nome email')
       .populate('assegnatoA', 'nome email');
     if (!ticket) {
-      return res.status(404).json({ message: 'Ticket non trovato' });
+      //controllo primna se il ticket esista
+      throw new ApiError(404, 'Ticket non trovato');
     }
-    //richiamo la funzione da "permessi" e controllo se quello user può visualizzare quel ticket
+    //se ticket esiste, controllo che l'user abbia l'autorizzazione per leggerlo
     if (!puoVedereIlTicket(req.user, ticket)) {
-      return res.status(403).json({ message: 'Permesso negato' });
+      throw new ApiError(403, 'Permesso negato');
     }
     res.json(ticket);
-  } catch (errore) {
-    res.status(400).json({ message: 'ID non valido' });
-  }
-});
+  }),
+);
 
 // POST /api/tickets  ->  viene chiedo di creare un nuovo ticket
 router.post('/', authorize('utente'), async (req, res) => {
@@ -89,31 +95,42 @@ router.post('/', authorize('utente'), async (req, res) => {
   }
 });
 
-// PATCH: modifica. Il proprietario puo' correggere il suo ticket,
-// l'admin puo' intervenire su tutti (gli serve per assegnarli).
+/// PATCH /api/tickets/:id
+// Modifica i dati descrittivi di un ticket: titolo, descrizione,
+// categoria, priorita'. Lo stato e l'assegnazione NO: per quelli
+// ci sono le rotte dedicate, con le loro regole.
 router.patch('/:id', async (req, res) => {
   try {
-    const ticket = await Ticket.findById(req.params.id); //prima controllo che il ticket esista
+    // controllo che ticket esiste
+    const ticket = await Ticket.findById(req.params.id);
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket non trovato' });
     }
-    //devo controllare se chi vuole visualizzarlo è il proprietario del ticket (ovvero chi lha aperto)
-    //quindi eProprietario restituisce true o false
+
+    // chi vuole modificare un ticket, è l'uuser utente che lo ha aperto?
     const eProprietario =
       req.user.ruolo === 'utente' &&
       ticket.creatoDa.toString() === req.user._id.toString();
-    //se lo user che vuole visualizzare non è ticket (quindi non puo vedere tutto)
-    //e se non è neanche il proprietario di chi ha aperto quel ticket,
-    //allora non puo vederlo
+
+    //se non è ne admin, ne il proprietario di quel ticket, allora non si puo modificare
     if (req.user.ruolo !== 'admin' && !eProprietario) {
       return res.status(403).json({ message: 'Permesso negato' });
     }
-    //se arrivo fin qui allora ho il permesso per modificare il ticket
-    const aggiornato = await Ticket.findByIdAndUpdate(req.params.id, req.body, {
-      new: true, //fa restituire la versione aggiornata anziche quella vecchia
-      runValidators: true, //attivo comunque i controlli di schema anche in fase di modifica
-    });
-    res.json(aggiornato); //restituisco il ticket modificato
+
+    // Prendiamo dal body SOLO questi quattro campi.
+    // Se arriva anche "stato" o "assegnatoA", viene ignorato.
+    const { titolo, descrizione, categoria, priorita } = req.body;
+
+    const aggiornato = await Ticket.findByIdAndUpdate(
+      req.params.id,
+      { titolo, descrizione, categoria, priorita },
+      {
+        new: true, // ridammi la versione DOPO la modifica
+        runValidators: true, // ricontrolla le regole dello schema
+      },
+    );
+
+    res.json(aggiornato);
   } catch (errore) {
     res.status(400).json({ message: errore.message });
   }
@@ -212,6 +229,96 @@ router.post('/:id/commenti', async (req, res) => {
     res.status(400).json({ message: errore.message });
   }
 });
+
+//l'assegnazione di un ticket specifico ad un tecnico specifico può essere fatta solo da un admin
+router.patch(
+  '/:id/assegna',
+  authorize('admin'),
+  asyncHandler(async (req, res) => {
+    const { tecnicoId } = req.body;
+    const ticket = await Ticket.findById(req.params.id);
+    if (!ticket) {
+      throw new ApiError(404, 'Ticket non trovato');
+    }
+    // Controlliamo che l'id passato sia davvero di un tecnico
+    const tecnico = await User.findById(tecnicoId);
+    if (!tecnico || tecnico.ruolo !== 'tecnico') {
+      throw new ApiError(400, "Il destinatario non e' un tecnico");
+    }
+    ticket.assegnatoA = tecnico._id;
+    // Alla prima assegnazione il ticket passa da aperto ad assegnato.
+    // Se era gia' in lavorazione (riassegnazione a un altro tecnico)
+    // lasciamo lo stato dov'e'.
+    if (ticket.stato === 'aperto') {
+      ticket.stato = 'assegnato';
+    }
+    await ticket.save();
+    res.json(ticket);
+  }),
+);
+
+// Cambiare lo stato di un ticket. Possono farlo l'admin, il tecnico
+// assegnato, e l'utente proprietario ma solo per riaprire.
+router.patch(
+  '/:id/stato',
+  asyncHandler(async (req, res) => {
+    const { stato } = req.body;
+
+    const ticket = await Ticket.findById(req.params.id); //controllo se il ticket esiste
+    if (!ticket) {
+      throw new ApiError(404, 'Ticket non trovato');
+    }
+
+    // --- Chi puo' toccare lo stato di questo ticket? ---
+
+    const eAdmin = req.user.ruolo === 'admin'; //controllo che chi vuole modificare lo stato sia un admin
+
+    const eIlTecnicoAssegnato = //oppure che sia un tecnico E che quel ticket sia assegnato proprio a lui
+      req.user.ruolo === 'tecnico' &&
+      ticket.assegnatoA?.toString() === req.user._id.toString();
+
+    // L'utente ha un solo potere: riaprire un ticket suo che
+    // gli hanno dichiarato risolto ma che risolto non e'.
+    const staRiaprendo =
+      req.user.ruolo === 'utente' && //controllo che sia un utente normale
+      ticket.creatoDa.toString() === req.user._id.toString() && //e che quel ticket lo abbia aperto lui
+      ticket.stato === 'risolto' && //che lo stato attuale sia risolto
+      stato === 'in_lavorazione'; //e che lo voglia riportare in lavorazione
+
+    if (!eAdmin && !eIlTecnicoAssegnato && !staRiaprendo) {
+      throw new ApiError(403, 'Permesso negato'); //nessuno dei tre casi: fuori
+    }
+
+    // --- La chiusura e' un caso a parte ---
+    // Il tecnico puo' arrivare fino a 'risolto': dichiara di aver
+    // finito il lavoro. Ma chiudere definitivamente la pratica
+    // spetta al responsabile del servizio, che verifica e archivia.
+    if (stato === 'chiuso' && !eAdmin) {
+      throw new ApiError(403, 'Solo un amministratore puo chiudere un ticket');
+    }
+
+    // --- Il passaggio richiesto e' sensato? ---
+    // Qui non conta piu' chi sei: conta solo se la mossa esiste
+    // sul tabellone degli stati.
+    if (!transizioneAmmessa(ticket.stato, stato)) {
+      throw new ApiError(
+        400,
+        `Passaggio non ammesso: da "${ticket.stato}" a "${stato}"`,
+      );
+    }
+
+    ticket.stato = stato;
+
+    // Registriamo quando e' stato chiuso: servira' per le statistiche
+    if (stato === 'chiuso') {
+      ticket.closedAt = new Date();
+    }
+
+    await ticket.save();
+
+    res.json(ticket);
+  }),
+);
 
 // Esporto il router per poterlo collegare in server.js.
 export default router;
