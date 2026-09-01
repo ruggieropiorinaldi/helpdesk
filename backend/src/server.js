@@ -4,6 +4,8 @@ import 'dotenv/config'; //le variabili d'ambiente devono essere caricate prima c
 import notFound from './middleware/notFound.js';
 import errorHandler from './middleware/errorHandler.js';
 
+import cookieParser from 'cookie-parser';
+
 import express from 'express'; //importo il framework che gestisce server, rotte, middlewae
 
 import cors from 'cors'; //autorizzo il frontend a fare richieste a questo backend
@@ -22,7 +24,15 @@ const PORT = process.env.PORT || 4000; //leggo la porta definita dentro al nostr
 
 // Autorizza le richieste che arrivano dall'indirizzo del frontend. Senza questo, il browser bloccherebbe le chiamate.
 // credentials: true serve per i cookie del login.
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+app.use(
+  cors({
+    //quando si usano i cookie bisogna dichiarare esattamente da quale origine si accettano richieste
+    //questo valore ce l'hai nel file .env
+    origin: process.env.CLIENT_URL,
+    // Questa riga autorizza il browser a mandare i cookie al server
+    credentials: true, //autorizzo il browser a mandare i cookie, altrimenti il refreshToken non arriverà mai al server
+  }),
+);
 
 // Se la richiesta porta con sé un corpo in formato JSON, lo trasforma in un oggetto JavaScript e lo mette in req.body.
 app.use(express.json());
@@ -33,6 +43,10 @@ app.use((req, res, next) => {
   console.log(req.method, req.url);
   next();
 });
+
+// Legge i cookie che arrivano e li mette in req.cookies.
+// Senza questo, req.cookies non esisterebbe manco
+app.use(cookieParser());
 
 //ROTTE
 
