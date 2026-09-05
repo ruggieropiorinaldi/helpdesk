@@ -6,7 +6,7 @@ function ProtectedRoute({ children }) {
   // Nessun utente = non ha fatto il login
   // <Navigate> e' un componente che manda il browser da un'altra parte.
   if (!utente) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" />; //se non c'è nessun utente loggato, allora reindirizzo alla pagina di login
   }
   // Altrimenti mostriamo quello che ci hanno passato dentro
   return children;

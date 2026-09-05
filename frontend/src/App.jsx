@@ -3,6 +3,8 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import Login from './pages/Login.jsx';
 import Tickets from './pages/Tickets.jsx';
+import NuovoTicket from './pages/NuovoTicket.jsx';
+
 function App() {
   return (
     // AuthProvider sta FUORI da tutto: la lavagna deve essere
@@ -11,6 +13,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+
           <Route
             path="/tickets"
             element={
@@ -19,6 +22,19 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* NUOVA ROTTA.
+              Anche questa dentro ProtectedRoute: se non sei
+              collegato non devi nemmeno vedere il form. */}
+          <Route
+            path="/tickets/nuovo"
+            element={
+              <ProtectedRoute>
+                <NuovoTicket />
+              </ProtectedRoute>
+            }
+          />
+
           {/* path="*" vuol dire "qualsiasi altro indirizzo".
               Chi arriva su / o su una pagina inesistente
               finisce sui ticket — e se non e' collegato,
@@ -29,4 +45,5 @@ function App() {
     </AuthProvider>
   );
 }
+
 export default App;

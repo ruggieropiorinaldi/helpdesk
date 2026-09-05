@@ -5,12 +5,12 @@ function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errore, setErrore] = useState('');
-  // Le due righe nuove: la funzione della lavagna e quella
-  // per cambiare pagina da dentro il codice.
-  const { login } = useAuth();
+  const { login } = useAuth(); //prendo login dalla Context
   const navigate = useNavigate();
+
+  //funzione per quando premo "invia" per i dati
   async function invia(evento) {
-    evento.preventDefault();
+    evento.preventDefault(); //impedisco che quando invio la pagina si riaggiorni in automatico
     setErrore('');
     try {
       const risposta = await fetch('http://localhost:4000/api/auth/login', {
@@ -24,9 +24,9 @@ function Login() {
         setErrore(dati.message);
         return;
       }
-      // Scriviamo utente e token sulla lavagna...
+      // Scriviamo utente e token sulla Context
       login(dati.utente, dati.accessToken);
-      // ...e cambiamo pagina.
+      // cambio pagina verso i ticket dell'utente appena loggato
       navigate('/tickets');
     } catch (err) {
       console.error(err);
