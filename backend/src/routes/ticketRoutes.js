@@ -1,4 +1,4 @@
-//definiamo le 5 operazioni che possiamo chiedere al server riguardo i ticket
+//definiamo le operazioni che possiamo chiedere al server riguardo i ticket
 
 import express from 'express';
 
@@ -6,7 +6,7 @@ import authenticate from '../middleware/authenticate.js';
 import authorize from '../middleware/authorize.js';
 
 import ApiError from '../utils/ApiError.js';
-import asyncHandler from '../utils/AsyncHandler.js';
+import asyncHandler from '../utils/asyncHandler.js'; // <-- minuscolo
 
 import { transizioneAmmessa } from '../utils/ticketStateMachine.js';
 import User from '../models/User.js';
@@ -41,7 +41,7 @@ router.get('/', async (req, res) => {
     }
     // Se e' admin non aggiungiamo niente: filtro resta {}, e find({}) restituisce tutto.
     const tickets = await Ticket.find(filtro)
-      .populate('creatoDa', 'nome email') //creatoDa contiene l'id di un user. la funzione "poplulate" prende i dati che scrivo dopo "nome email" direttamente dall'oggetto
+      .populate('creatoDa', 'nome email') //creatoDa contiene l'id di un user. la funzione "populate" prende i dati che scrivo dopo "nome email" direttamente dall'oggetto
       .populate('assegnatoA', 'nome email')
       .sort({ createdAt: -1 });
     res.json(tickets);
@@ -59,7 +59,7 @@ router.get('/', async (req, res) => {
 
 // GET /api/tickets/:id  ->  viene richiesto un ticket singolo
 // I due punti in ':id' indicano che nel percorso ci sarà una parte variabile
-//che è proprio il n ome del ticket specifico che voglio
+//che è proprio il nome del ticket specifico che voglio
 router.get(
   '/:id',
   asyncHandler(async (req, res) => {
@@ -67,7 +67,7 @@ router.get(
       .populate('creatoDa', 'nome email')
       .populate('assegnatoA', 'nome email');
     if (!ticket) {
-      //controllo primna se il ticket esista
+      //controllo prima se il ticket esista
       throw new ApiError(404, 'Ticket non trovato');
     }
     //se ticket esiste, controllo che l'user abbia l'autorizzazione per leggerlo
@@ -78,7 +78,7 @@ router.get(
   }),
 );
 
-// POST /api/tickets  ->  viene chiedo di creare un nuovo ticket
+// POST /api/tickets  ->  viene chiesto di creare un nuovo ticket
 router.post('/', authorize('utente'), async (req, res) => {
   try {
     const { titolo, descrizione, categoria, priorita } = req.body;
@@ -87,7 +87,7 @@ router.post('/', authorize('utente'), async (req, res) => {
       descrizione,
       categoria,
       priorita,
-      creatoDa: req.user._id, //il ruolo non lo impostiamo piu noi, lo prendiamo direttamente dal token
+      creatoDa: req.user._id, //il proprietario non lo impostiamo piu noi, lo prendiamo direttamente dal token
     });
     res.status(201).json(nuovoTicket);
   } catch (errore) {
@@ -107,7 +107,7 @@ router.patch('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Ticket non trovato' });
     }
 
-    // chi vuole modificare un ticket, è l'uuser utente che lo ha aperto?
+    // chi vuole modificare un ticket, è l'user utente che lo ha aperto?
     const eProprietario =
       req.user.ruolo === 'utente' &&
       ticket.creatoDa.toString() === req.user._id.toString();
@@ -136,29 +136,14 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
-// DELETE: solo l'amministratore. Qui basta authorize,
-// non serve nessun controllo aggiuntivo.
+// DELETE /api/tickets/:id  ->  eliminare un ticket. Solo l'amministratore:
+// qui basta authorize, non serve nessun controllo aggiuntivo.
 router.delete('/:id', authorize('admin'), async (req, res) => {
   try {
     const ticket = await Ticket.findByIdAndDelete(req.params.id);
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket non trovato' });
     }
-    res.json({ message: 'Ticket eliminato' });
-  } catch (errore) {
-    res.status(400).json({ message: 'ID non valido' });
-  }
-});
-
-// DELETE /api/tickets/:id  -> viene chiesto di eliminare un ticket specifico
-//quindi anche qui serve l'id
-router.delete('/:id', async (req, res) => {
-  try {
-    const ticket = await Ticket.findByIdAndDelete(req.params.id);
-    if (!ticket) {
-      return res.status(404).json({ message: 'Ticket non trovato' });
-    }
-
     res.json({ message: 'Ticket eliminato' }); //mando una conferma di avvenuta cancellazione
   } catch (errore) {
     res.status(400).json({ message: 'ID non valido' });
@@ -222,7 +207,7 @@ router.post('/:id/commenti', async (req, res) => {
       testo: req.body.testo,
     });
 
-    // 201 = creato. È il codice giusto dopo una POST che produce
+    // 201 = creato. È il codice giusto dopo una POST che produce una risorsa
     res.status(201).json(nuovoCommento);
   } catch (errore) {
     // Ci finiamo se la validazione fallisce (per esempio testo mancante) o se l'id non ha la forma di un ObjectId.

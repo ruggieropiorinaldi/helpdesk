@@ -84,7 +84,9 @@ function Tickets() {
             cambiate: l'_id di MongoDB e' unico, perfetto. */}
         {tickets.map((ticket) => (
           <li key={ticket._id}>
-            <strong>{ticket.titolo}</strong>
+            <strong>
+              <Link to={'/tickets/' + ticket._id}>{ticket.titolo}</Link>
+            </strong>
             {' — '}
             {ticket.stato}
             {" — priorita' "}

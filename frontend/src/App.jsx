@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute.jsx';
 import Login from './pages/Login.jsx';
 import Tickets from './pages/Tickets.jsx';
 import NuovoTicket from './pages/NuovoTicket.jsx';
+import DettaglioTicket from './pages/DettaglioTicket.jsx';
 
 function App() {
   return (
@@ -31,6 +32,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <NuovoTicket />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/tickets/:id"
+            element={
+              <ProtectedRoute>
+                <DettaglioTicket />
               </ProtectedRoute>
             }
           />
