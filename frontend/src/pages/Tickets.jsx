@@ -7,7 +7,10 @@ function Tickets() {
   // apiAuth arriva dal Context: sa gia' quale token usare
   // e sa rinnovarlo da solo se scade. Per questo non importiamo
   // piu' niente da richiesta.js.
-  const { utente, accessToken, logout, apiAuth } = useAuth();
+  // "logout" non serve piu' qui: adesso il bottone Esci sta nella Barra.
+  // "utente" invece serve ancora, per decidere se mostrare il link
+  // al nuovo ticket.
+  const { utente, accessToken, apiAuth } = useAuth();
 
   const [tickets, setTickets] = useState([]);
   const [errore, setErrore] = useState('');
@@ -41,25 +44,15 @@ function Tickets() {
 
   if (caricamento) {
     // se caricamento=true, allora sto ancora aspettando
-    // allora mostro all'utente che sto caricando ancora
-    return <p>Caricamento...</p>;
+    // allora mostro all'utente che sto caricando ancora.
+    // "tenue" e' la classe del CSS che lo scrive in grigio piccolo.
+    return <p className="tenue">Caricamento...</p>;
   }
 
   return (
     <div>
       <h1>I tuoi ticket</h1>
 
-      <p>
-        Ciao {utente.nome} ({utente.ruolo}){' '}
-        {/* onClick={logout} passa la FUNZIONE, non la chiama.
-            Con logout() partirebbe subito al primo disegno
-            e verresti buttato fuori da solo. */}
-        <button onClick={logout}>Esci</button>
-      </p>
-
-      {/* Link e' il collegamento di React Router: cambia pagina
-          senza ricaricare niente. Un <a> normale invece
-          ricaricherebbe tutto e perderesti la sessione. */}
       {/* Il link compare SOLO per il ruolo 'utente', perche' la rotta
           POST /api/tickets nel backend ha authorize('utente').
           Mostrarlo a un admin lo porterebbe dritto su un 403.
@@ -70,27 +63,45 @@ function Tickets() {
         </p>
       )}
 
-      {/* mostro il paragrafo rosso solo se errore non e' vuoto */}
-      {errore && <p style={{ color: 'red' }}>{errore}</p>}
+      {/* mostro il riquadro rosso solo se errore non e' vuoto.
+          Prima lo stile stava scritto a mano nel tag (style inline):
+          adesso e' una classe del foglio di stile, cosi' tutti i
+          messaggi di errore del progetto sono uguali. */}
+      {errore && <p className="errore">{errore}</p>}
 
       {/* se l'array e' vuoto lo dico, altrimenti la pagina
           sembrerebbe rotta */}
-      {tickets.length === 0 && <p>Nessun ticket da mostrare.</p>}
+      {tickets.length === 0 && (
+        <p className="tenue">Nessun ticket da mostrare.</p>
+      )}
 
-      <ul>
+      {/* className="lista" toglie i pallini e trasforma ogni <li>
+          in una scheda bianca col bordo arrotondato. */}
+      <ul className="lista">
         {/* .map() trasforma OGNI ticket in un <li>.
             Dieci ticket in entrata, dieci righe in uscita.
             La key serve a React per capire quali righe sono
             cambiate: l'_id di MongoDB e' unico, perfetto. */}
         {tickets.map((ticket) => (
           <li key={ticket._id}>
-            <strong>
-              <Link to={'/tickets/' + ticket._id}>{ticket.titolo}</Link>
-            </strong>
-            {' — '}
-            {ticket.stato}
-            {" — priorita' "}
-            {ticket.priorita}
+            {/* Link e' il collegamento di React Router: cambia pagina
+                senza ricaricare niente. Un <a> normale invece
+                ricaricherebbe tutto e perderesti la sessione.
+                Il grassetto non lo metto piu' col tag <strong>:
+                lo fa il CSS con la regola .lista a */}
+            <Link to={'/tickets/' + ticket._id}>{ticket.titolo}</Link>
+
+            <div className="tenue">
+              {/* Due classi separate da uno spazio: la prima da' la
+                  forma (pillola, maiuscolo, testo bianco), la seconda
+                  solo il colore. La seconda la costruisco attaccando
+                  lo stato del ticket: stato-aperto, stato-risolto...
+                  Cosi' il colore cambia da solo quando cambia lo stato. */}
+              <span className={'stato stato-' + ticket.stato}>
+                {ticket.stato}
+              </span>{' '}
+              priorita' {ticket.priorita}
+            </div>
           </li>
         ))}
       </ul>

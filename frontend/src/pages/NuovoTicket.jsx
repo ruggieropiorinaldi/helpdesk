@@ -56,10 +56,20 @@ function NuovoTicket() {
     <div>
       <h1>Nuovo ticket</h1>
 
+      {/* L'errore adesso sta SOPRA il form: se il backend rifiuta,
+          lo vedi subito senza dover scorrere in fondo.
+          "errore" e' la classe del CSS: riquadro rosa col bordo.
+          Prima lo stile era scritto a mano nel tag (inline), e uno
+          stile inline batte qualsiasi regola del foglio di stile. */}
+      {errore && <p className="errore">{errore}</p>}
+
       {/* onSubmit parte sia col click sul bottone
-          sia premendo Invio dentro un campo. */}
-      <form onSubmit={invia}>
-        <div>
+          sia premendo Invio dentro un campo.
+          "riquadro" fa del form una scheda bianca col bordo. */}
+      <form className="riquadro" onSubmit={invia}>
+        {/* "campo" non fa niente di magico: mette solo un po' di
+            spazio sotto, cosi' i campi non si toccano fra loro. */}
+        <div className="campo">
           <label>Titolo</label>
           {/* Campo controllato: il valore mostrato viene dallo
               stato (value={titolo}) e ogni tasto premuto aggiorna
@@ -72,7 +82,7 @@ function NuovoTicket() {
           />
         </div>
 
-        <div>
+        <div className="campo">
           <label>Descrizione</label>
           {/* <textarea> funziona esattamente come <input>:
               value + onChange. */}
@@ -83,7 +93,7 @@ function NuovoTicket() {
           />
         </div>
 
-        <div>
+        <div className="campo">
           <label>Categoria</label>
           {/* Anche il <select> e' controllato: value dice quale
               opzione e' selezionata, onChange aggiorna lo stato.
@@ -101,7 +111,7 @@ function NuovoTicket() {
           </select>
         </div>
 
-        <div>
+        <div className="campo">
           <label>Priorita'</label>
           <select
             value={priorita}
@@ -116,10 +126,6 @@ function NuovoTicket() {
         {/* type="submit" fa scattare l'onSubmit del form */}
         <button type="submit">Crea ticket</button>
       </form>
-
-      {/* Se errore e' una stringa vuota React non disegna niente;
-          se contiene testo, disegna il paragrafo rosso. */}
-      {errore && <p style={{ color: 'red' }}>{errore}</p>}
     </div>
   );
 }

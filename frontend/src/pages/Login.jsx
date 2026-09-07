@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,28 +34,46 @@ function Login() {
       setErrore('Server non raggiungibile');
     }
   }
+
   return (
-    <form onSubmit={invia}>
+    // Il titolo e l'errore escono dal form e vanno in un <div>
+    // che li contiene tutti: cosi' il riquadro bianco e' il form
+    // e basta, e sembra una scheda di accesso.
+    <div>
       <h1>Accedi</h1>
-      <div>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </div>
-      <div>
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </div>
-      <button type="submit">Entra</button>
-      {errore && <p style={{ color: 'red' }}>{errore}</p>}
-    </form>
+
+      {/* "errore" e' la classe del CSS: riquadro rosa col bordo.
+          Prima lo stile era scritto dentro il tag (inline), e uno
+          stile inline batte qualsiasi regola del foglio di stile. */}
+      {errore && <p className="errore">{errore}</p>}
+
+      <form className="riquadro" onSubmit={invia}>
+        {/* "campo" mette solo un po' di spazio sotto,
+            cosi' i due campi non si toccano. */}
+        <div className="campo">
+          <label>Email</label>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+
+        <div className="campo">
+          <label>Password</label>
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+
+        <button type="submit">Entra</button>
+      </form>
+    </div>
   );
 }
+
 export default Login;

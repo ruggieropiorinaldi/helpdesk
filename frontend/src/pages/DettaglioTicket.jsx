@@ -89,12 +89,13 @@ function DettaglioTicket() {
     }
   }
   if (caricamento) {
-    return <p>Caricamento...</p>;
+    // "tenue" e' la classe del CSS: grigio e piccolo
+    return <p className="tenue">Caricamento...</p>;
   }
   // Se il caricamento e' finito ma il ticket non c'e', vuol dire
   // che il backend ha risposto con un errore
   if (!ticket) {
-    return <p style={{ color: 'red' }}>{errore || 'Ticket non disponibile'}</p>;
+    return <p className="errore">{errore || 'Ticket non disponibile'}</p>;
   }
   const eAdmin = utente.ruolo === 'admin';
   const eTecnico = utente.ruolo === 'tecnico';
@@ -109,42 +110,64 @@ function DettaglioTicket() {
       <p>
         <Link to="/tickets">&larr; Torna alla lista</Link>
       </p>
+
       <h1>{ticket.titolo}</h1>
-      <p>{ticket.descrizione}</p>
-      <ul>
-        <li>
-          Stato: <strong>{ticket.stato}</strong>
-        </li>
-        <li>Priorita': {ticket.priorita}</li>
-        <li>Categoria: {ticket.categoria}</li>
-        <li>Aperto da: {ticket.creatoDa ? ticket.creatoDa.nome : '-'}</li>
-        <li>
-          Assegnato a: {ticket.assegnatoA ? ticket.assegnatoA.nome : 'nessuno'}
-        </li>
-      </ul>
-      {errore && <p style={{ color: 'red' }}>{errore}</p>}
+
+      {/* "riquadro" e' la scheda bianca col bordo arrotondato:
+          la stessa classe la riuso per tutti i blocchi sotto. */}
+      <div className="riquadro">
+        <p>{ticket.descrizione}</p>
+
+        <p>
+          {/* Due classi separate da uno spazio: "stato" da' la forma
+              (pillola, maiuscolo, testo bianco), "stato-qualcosa" da'
+              solo il colore. La seconda la costruisco attaccando lo
+              stato del ticket, cosi' il colore cambia da solo. */}
+          <span className={'stato stato-' + ticket.stato}>{ticket.stato}</span>
+        </p>
+
+        {/* Le informazioni di contorno in grigio piccolo:
+            non sono la cosa importante della pagina. */}
+        <p className="tenue">
+          Priorita' {ticket.priorita} &middot; categoria {ticket.categoria}
+          <br />
+          Aperto da {ticket.creatoDa ? ticket.creatoDa.nome : '-'}
+          {' · '}
+          assegnato a {ticket.assegnatoA ? ticket.assegnatoA.nome : 'nessuno'}
+        </p>
+      </div>
+
+      {errore && <p className="errore">{errore}</p>}
+
       {/* ---- Pannello dell'admin: assegna un tecnico ---- */}
       {eAdmin && ticket.stato === 'aperto' && (
-        <form onSubmit={assegna}>
+        <form className="riquadro" onSubmit={assegna}>
           <h3>Assegna a un tecnico</h3>
-          <select
-            value={tecnicoScelto}
-            onChange={(e) => setTecnicoScelto(e.target.value)}
-            required
-          >
-            <option value="">-- scegli --</option>
-            {tecnici.map((t) => (
-              <option key={t._id} value={t._id}>
-                {t.nome}
-              </option>
-            ))}
-          </select>{' '}
+
+          {/* "campo" mette solo un po' di spazio sotto,
+              cosi' i campi del form non si toccano. */}
+          <div className="campo">
+            <select
+              value={tecnicoScelto}
+              onChange={(e) => setTecnicoScelto(e.target.value)}
+              required
+            >
+              <option value="">-- scegli --</option>
+              {tecnici.map((t) => (
+                <option key={t._id} value={t._id}>
+                  {t.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <button type="submit">Assegna</button>
         </form>
       )}
+
       {/* ---- Pannello di chi fa avanzare il ticket ---- */}
       {(eAdmin || eTecnico) && statiPossibili.length > 0 && (
-        <div>
+        <div className="riquadro">
           <h3>Cambia stato</h3>
 
           {statiPossibili.map((s) => (
@@ -154,39 +177,52 @@ function DettaglioTicket() {
           ))}
         </div>
       )}
+
       {/* ---- L'unico potere dell'utente sullo stato ----
            Non fa avanzare niente, ma se il tecnico ha dichiarato
            risolto un problema che risolto non e', puo' rimandare
            il ticket in lavorazione. */}
       {utente.ruolo === 'utente' && ticket.stato === 'risolto' && (
-        <div>
+        <div className="riquadro">
           <h3>Il problema non è risolto?</h3>
           <button onClick={() => cambiaStato('in_lavorazione')}>
             Riapri il ticket
           </button>
         </div>
       )}
+
       {/* ---- I commenti: questi li vedono tutti ---- */}
-      <h3>Commenti</h3>
-      {commenti.length === 0 && <p>Nessun commento.</p>}
-      <ul>
-        {commenti.map((c) => (
-          <li key={c._id}>
-            <strong>{c.autore ? c.autore.nome : 'utente rimosso'}</strong>
-            {': '}
-            {c.testo}
-          </li>
-        ))}
-      </ul>
-      <form onSubmit={inviaCommento}>
-        <textarea
-          value={testo}
-          onChange={(e) => setTesto(e.target.value)}
-          required
-        />
-        <br />
-        <button type="submit">Invia commento</button>
-      </form>
+      <div className="riquadro">
+        <h3>Commenti</h3>
+
+        {commenti.length === 0 && <p className="tenue">Nessun commento.</p>}
+
+        {/* "commenti" toglie i pallini e mette una riga
+            di separazione fra un commento e l'altro. */}
+        <ul className="commenti">
+          {commenti.map((c) => (
+            <li key={c._id}>
+              <span className="autore">
+                {c.autore ? c.autore.nome : 'utente rimosso'}
+              </span>
+              <div>{c.testo}</div>
+            </li>
+          ))}
+        </ul>
+
+        <form onSubmit={inviaCommento}>
+          <div className="campo">
+            <label>Scrivi una risposta</label>
+            <textarea
+              value={testo}
+              onChange={(e) => setTesto(e.target.value)}
+              required
+            />
+          </div>
+
+          <button type="submit">Invia commento</button>
+        </form>
+      </div>
     </div>
   );
 }
