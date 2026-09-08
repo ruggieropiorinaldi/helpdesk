@@ -63,10 +63,21 @@ export function AuthProvider({ children }) {
   //controllo se all'avvio dell'applicazione c'era una sessione aperta
   useEffect(() => {
     async function ripristina() {
-      // Se il cookie c'e' ed e' valido, rinnovaToken riempie utente e token
-      // se non c'e', restituisce null e amen
-      await rinnovaToken();
-      setPronto(true);
+      try {
+        // Se il cookie c'e' ed e' valido, rinnovaToken riempie utente e token
+        // se non c'e', restituisce null e amen
+        await rinnovaToken();
+      } catch (err) {
+        // Ci arriviamo se la fetch fallisce proprio: backend spento,
+        // indirizzo sbagliato, niente rete. Non e' un errore da mostrare,
+        // vuol dire solo che non c'e' nessuna sessione da riprendere.
+        console.error(err);
+      } finally {
+        // finally gira SEMPRE, sia che il refresh riesca sia che fallisca.
+        // Senza, un errore lascerebbe "pronto" a false e la pagina
+        // resterebbe su "Caricamento..." per sempre.
+        setPronto(true);
+      }
     }
     ripristina();
   }, []); // [] = una volta sola, all'avvio
@@ -77,12 +88,20 @@ export function AuthProvider({ children }) {
 
   // Logout vero: prima spegne la sessione sul server, poi svuota lo stato qui
   async function logout() {
-    await fetch(BASE_URL + '/auth/logout', {
-      method: 'POST',
-      credentials: 'include',
-    });
-    setUtente(null);
-    setAccessToken(null);
+    try {
+      await fetch(BASE_URL + '/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (err) {
+      // Se il server non risponde non possiamo revocare il refresh token,
+      // ma di sicuro non vogliamo lasciare l'utente dentro: lo stato
+      // locale lo svuotiamo lo stesso, qui sotto.
+      console.error(err);
+    } finally {
+      setUtente(null);
+      setAccessToken(null);
+    }
   }
   return (
     <AuthContext.Provider

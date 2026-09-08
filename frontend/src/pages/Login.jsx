@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { BASE_URL } from '../api/richiesta.js';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -14,7 +15,7 @@ function Login() {
     evento.preventDefault(); //impedisco che quando invio la pagina si riaggiorni in automatico
     setErrore('');
     try {
-      const risposta = await fetch('http://localhost:4000/api/auth/login', {
+      const risposta = await fetch(BASE_URL + '/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),

@@ -1,6 +1,9 @@
-export const BASE_URL = 'http://localhost:4000/api';
-// manda la richiesta e restituisce la risposta GREZZA, senza leggerla e senza controllare niente
-//  Chi la chiama decidera cosa farne guardando risposta.status
+// L'indirizzo del backend non e' piu' scritto a mano.
+// Vite mette in import.meta.env tutte le variabili che
+// cominciano con VITE_ e le incolla nel codice al momento
+// della compilazione. Se non c'e' (sviluppo), usiamo localhost
+export const BASE_URL =
+  import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 export function inviaRichiesta(percorso, token, opzioni = {}) {
   return fetch(BASE_URL + percorso, {
     method: opzioni.method || 'GET',
