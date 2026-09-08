@@ -1,7 +1,6 @@
 {
   "rewrites": [
     {
-      "_nota": "la mia app è una Single Page Application (ovvero abbiamo un'unica pagina (index.html) e React decide quali componenti disegnare nel browser il rewrite dice a Vercel qualunque cosa ti chiedano, rispondi con index.html, poi poi ci pensa React a capire quale pagina mostrare",
       "source": "/(.*)",
       "destination": "/index.html"
     }
