@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 // BASE_URL sa dov'e' il backend: in locale localhost, online Render.
 // Il valore arriva dalla variabile VITE_API_URL.
@@ -69,6 +69,11 @@ function Login() {
 
         <button type="submit">Entra</button>
       </form>
+
+      {/* Chi non ha ancora un account passa di qui */}
+      <p>
+        Non hai un account? <Link to="/registrati">Registrati</Link>
+      </p>
     </div>
   );
 }

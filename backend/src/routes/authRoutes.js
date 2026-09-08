@@ -11,14 +11,6 @@ import {
   datiPubblici,
 } from '../services/tokenService.js';
 const router = express.Router();
-// sia durante fase di registrazione che di login viene generato e assegnato un token
-function creaToken(utente) {
-  return jwt.sign(
-    { id: utente._id, ruolo: utente.ruolo }, //dentro al token metto solo dati non sensibili ma allo stesso tempo utili per identificare l'user
-    process.env.JWT_SECRET, //contiene il segreto con cui sigillare il token
-    { expiresIn: '1h' }, //il token dopo 1h scade da solo
-  );
-}
 
 //REGISTER
 // POST /api/auth/register  -> viene chiesto di creare un account e quindi di registrarsi
@@ -26,13 +18,44 @@ router.post(
   '/register',
   asyncHandler(async (req, res) => {
     const { nome, email, password } = req.body;
-    // Il ruolo NON lo prendiamo dal body: chi si registra e' sempre 'utente' anche se dovesse mettere altro
-    const utente = await User.create({ nome, email, password });
+
+    // Controllo minimo prima di disturbare il database.
+    // Il modello ha gia' i suoi required, ma cosi' il messaggio
+    // che arriva al frontend e' chiaro e in italiano.
+    if (!nome || !email || !password) {
+      throw new ApiError(400, 'Nome, email e password sono obbligatori');
+    }
+
+    // Email gia' presa? Meglio accorgersene qui e rispondere 409
+    // (= conflitto), invece di lasciar esplodere l'indice unique
+    // dello schema con un errore che diventerebbe un 500.
+    const esistente = await User.findOne({ email });
+    if (esistente) {
+      throw new ApiError(409, 'Questa email e gia registrata');
+    }
+
+    // Il ruolo NON lo prendiamo dal body: chi si registra e' sempre 'utente'
+    // anche se dovesse mettere altro. Se lo leggessimo da req.body,
+    // basterebbe mandare {"ruolo":"admin"} da Thunder Client per
+    // diventare amministratore. Lo decide il server, punto.
+    const utente = await User.create({
+      nome,
+      email,
+      password,
+      ruolo: 'utente',
+    });
+
+    // La password non la cifriamo qui: ci pensa il pre('save') del
+    // modello User, cosi' la regola vive in un posto solo e vale
+    // per qualunque strada crei un utente.
+
     // Creiamo il refresh token e lo mettiamo nel cookie
     const refresh = await creaRefreshToken(utente);
     res.cookie('refreshToken', refresh, opzioniCookie());
     // L'access token invece va nel corpo della risposta:
-    // il frontend lo terra' in memoria
+    // il frontend lo terra' in memoria.
+    // Nota: rispondiamo come farebbe il login, quindi chi si registra
+    // e' gia' dentro e non deve rifare l'accesso subito dopo.
     res.status(201).json({
       accessToken: creaAccessToken(utente),
       utente: datiPubblici(utente),

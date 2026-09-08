@@ -18,6 +18,9 @@ function Barra() {
       <Link to="/tickets" className="titolo">
         HelpDesk
       </Link>
+      {/* Il collegamento alla gestione utenti lo vede solo l'admin.
+          Agli altri non serve, e comunque il backend risponderebbe 403 */}
+      {utente.ruolo === 'admin' && <Link to="/utenti">Utenti</Link>}
       <span className="utente">
         {utente.nome} ({utente.ruolo}){' '}
         {/* onClick={logout} passa la FUNZIONE, non la chiama.

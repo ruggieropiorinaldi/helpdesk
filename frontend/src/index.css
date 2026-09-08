@@ -132,6 +132,17 @@ h3 {
 .stato-chiuso {
   background: #656d76;
 }
+/* Le stesse pillole le riuso nella pagina Utenti per i ruoli:
+   cambia solo il nome della seconda classe */
+.stato-utente {
+  background: #656d76;
+}
+.stato-tecnico {
+  background: #1f6feb;
+}
+.stato-admin {
+  background: #6f42c1;
+}
 /* I FORM */
 .campo {
   margin-bottom: 12px;

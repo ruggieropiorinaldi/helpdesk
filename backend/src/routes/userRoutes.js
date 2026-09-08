@@ -38,7 +38,40 @@ router.patch('/:id/ruolo', async (req, res) => {
     // Estraggo dal body SOLO il campo ruolo e ignoro tutto il resto
     const ruolo = req.body.ruolo;
 
-    const utente = await User.findByIdAndUpdate(
+    // 1. Il ruolo richiesto e' uno dei due che questa pagina puo' assegnare?
+    //    'admin' NON e' in questa lista di proposito: nuovi amministratori
+    //    non si creano dall'interfaccia. Il primo (e unico) admin l'ho
+    //    creato a mano nel database, ed e' una scelta consapevole.
+    if (ruolo !== 'utente' && ruolo !== 'tecnico') {
+      return res.status(400).json({ message: 'Ruolo non ammesso' });
+    }
+
+    // 2. L'utente da modificare esiste?
+    const utente = await User.findById(req.params.id);
+    if (!utente) {
+      return res.status(404).json({ message: 'Utente non trovato' });
+    }
+
+    // 3. Non tocco gli altri amministratori: due admin non devono
+    //    potersi declassare a vicenda, e non voglio rischiare di
+    //    restare con zero admin nel sistema.
+    if (utente.ruolo === 'admin') {
+      return res
+        .status(403)
+        .json({ message: 'Non si puo cambiare il ruolo di un amministratore' });
+    }
+
+    // 4. E soprattutto non tocco me stesso: se mi togliessi il ruolo
+    //    admin resterei chiuso fuori dalla mia stessa pagina.
+    //    (req.user ce l'ha messo authenticate)
+    if (utente._id.toString() === req.user._id.toString()) {
+      return res
+        .status(400)
+        .json({ message: 'Non puoi cambiare il tuo stesso ruolo' });
+    }
+
+    // Superati i controlli, la modifica vera e' una riga sola.
+    const aggiornato = await User.findByIdAndUpdate(
       req.params.id, // prendo l'id dell'utente cui voglio modificare il ruolo
       { ruolo }, // cosa cambiare: solo questo campo
       {
@@ -47,13 +80,9 @@ router.patch('/:id/ruolo', async (req, res) => {
       },
     );
 
-    if (!utente) {
-      return res.status(404).json({ message: 'Utente non trovato' });
-    }
-
-    res.json(utente);
+    res.json(aggiornato);
   } catch (errore) {
-    // 400: ruolo non ammesso, oppure id malformato. Colpa della richiesta.
+    // 400: id malformato, oppure schema non rispettato. Colpa della richiesta.
     res.status(400).json({ message: errore.message });
   }
 });
