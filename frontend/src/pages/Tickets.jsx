@@ -53,24 +53,18 @@ function Tickets() {
     <div>
       <h1>I tuoi ticket</h1>
 
-      {/* Il link compare SOLO per il ruolo 'utente', perche' la rotta
-          POST /api/tickets nel backend ha authorize('utente').
-          Mostrarlo a un admin lo porterebbe dritto su un 403.
-          E' comodita', non sicurezza: quella la fa il backend. */}
+      {/* il link per aprire un nuovo ticket è visibile solo all'utente
+      controlliamo quindi che sia un utente, e in caso affermativo gli mostro il link
+      attenzione che è un controllo superficiale, in realtà il vero controllo lo fa il backend */}
       {utente.ruolo === 'utente' && (
         <p>
           <Link to="/tickets/nuovo">Apri un nuovo ticket</Link>
         </p>
       )}
 
-      {/* mostro il riquadro rosso solo se errore non e' vuoto.
-          Prima lo stile stava scritto a mano nel tag (style inline):
-          adesso e' una classe del foglio di stile, cosi' tutti i
-          messaggi di errore del progetto sono uguali. */}
       {errore && <p className="errore">{errore}</p>}
 
-      {/* se l'array e' vuoto lo dico, altrimenti la pagina
-          sembrerebbe rotta */}
+      {/* se l'array e' vuoto lo dico, altrimenti la pagina sembrerebbe rotta */}
       {tickets.length === 0 && (
         <p className="tenue">Nessun ticket da mostrare.</p>
       )}
@@ -86,17 +80,11 @@ function Tickets() {
           <li key={ticket._id}>
             {/* Link e' il collegamento di React Router: cambia pagina
                 senza ricaricare niente. Un <a> normale invece
-                ricaricherebbe tutto e perderesti la sessione.
-                Il grassetto non lo metto piu' col tag <strong>:
-                lo fa il CSS con la regola .lista a */}
+                ricaricherebbe tutto e perderesti la sessione*/}
             <Link to={'/tickets/' + ticket._id}>{ticket.titolo}</Link>
 
             <div className="tenue">
-              {/* Due classi separate da uno spazio: la prima da' la
-                  forma (pillola, maiuscolo, testo bianco), la seconda
-                  solo il colore. La seconda la costruisco attaccando
-                  lo stato del ticket: stato-aperto, stato-risolto...
-                  Cosi' il colore cambia da solo quando cambia lo stato. */}
+              {/*cosi' il colore cambia da solo quando cambia lo stato*/}
               <span className={'stato stato-' + ticket.stato}>
                 {ticket.stato}
               </span>{' '}

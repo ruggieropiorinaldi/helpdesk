@@ -2,14 +2,19 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 function Barra() {
   const { utente, logout } = useAuth();
-  // Se non c'e' nessuno collegato (siamo sul login) la barra non
-  // serve. Restituendo null non disegniamo proprio niente:
-  // e' il modo di React per dire "salta questo componente".
+  // Se non c'e' nessuno collegato (siamo sul login) allora la barra non serve
+  // Restituendo null non disegniamo proprio niente (quindi salto proprio questo continente)
   if (!utente) {
     return null;
   }
   return (
     <div className="barra">
+      {/*
+        Disegna comunque un <a> nella pagina, ma intercetta il click e cambia pagina senza ricaricare niente: 
+        aggiorna l'indirizzo nella barra e React Router sostituisce solo il componente sullo schermo
+        to="/tickets" è la destinazione. In un <a> si chiama href; qui si chiama to perché non è un indirizzo che il browser deve andare a chiedere,
+         ma un percorso che React Router deve far combaciare con una delle sue <Route>.
+      */}
       <Link to="/tickets" className="titolo">
         HelpDesk
       </Link>

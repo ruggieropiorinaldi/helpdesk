@@ -20,7 +20,10 @@ import ticketRoutes from './routes/ticketRoutes.js'; // Importo il router dei ti
 
 const app = express(); //creo l'applicazione. "app" è l'oggetto dove registrerò tutti i middleware e le rotte
 
-const PORT = process.env.PORT || 4000; //leggo la porta definita dentro al nostro file .env che contiene i dati d'accesso (se la porta non è definita accedo a 4000)
+// In locale usiamo 4000. Online la porta la sceglie Render e ce la comunica
+// nella variabile PORT: se ignorassimo quel valore, Render busserebbe a una
+// porta dove non c'è nessuno e il deploy fallirebbe.
+const PORT = process.env.PORT || 4000;
 
 // Autorizza le richieste che arrivano dall'indirizzo del frontend. Senza questo, il browser bloccherebbe le chiamate.
 // credentials: true serve per i cookie del login.
@@ -28,7 +31,10 @@ app.use(
   cors({
     //quando si usano i cookie bisogna dichiarare esattamente da quale origine si accettano richieste
     //questo valore ce l'hai nel file .env
-    origin: process.env.CLIENT_URL,
+    // Il valore di riserva serve per lo sviluppo: se CLIENT_URL non è
+    // impostata, vale localhost:5173. Online la impostiamo su Render
+    // con l'indirizzo di Vercel.
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
     // Questa riga autorizza il browser a mandare i cookie al server
     credentials: true, //autorizzo il browser a mandare i cookie, altrimenti il refreshToken non arriverà mai al server
   }),
@@ -50,6 +56,8 @@ app.use(cookieParser());
 
 //ROTTE
 
+// Non serve all'applicazione: serve a noi, per svegliare il server su Render
+// e per controllare che sia partito senza dover fare il login.
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Il backend è vivo!' });
 });
@@ -60,14 +68,12 @@ app.get('/api/health', (req, res) => {
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
-// Questo middleware sta dopo tutte le rotte, quindi si arriva qiu solo se non si è trovata la rotta giusta corrispondente
-app.use((req, res) => {
-  res.status(404).json({ message: 'Rotta non trovata' });
-});
 
 //questi middleware dobbiamo metterli in fondo per ultimi perchè
 //se li mettessimo all'inizio, non diamo tempo di poter vedere se la rotta richiesta c'è
 //o se è scritta correttamente, quindi andrebbe direttamente in not found
+// notFound risponde 404 a qualunque rotta non riconosciuta dalle righe sopra,
+// errorHandler raccoglie tutti gli errori lanciati dalle rotte.
 app.use(notFound);
 app.use(errorHandler);
 
@@ -82,7 +88,7 @@ async function avvia() {
     //aspetterò che il database risponda per procedere.
     // app.listen mette il server in ascolto sulla porta, e chiama la funzione passata quando è pronto.
     app.listen(PORT, () => {
-      console.log('Server acceso su http://localhost:' + PORT);
+      console.log('Server acceso sulla porta ' + PORT);
     });
   } catch (errore) {
     // Se la connessione fallisce, stampo il messagio d'errore su console

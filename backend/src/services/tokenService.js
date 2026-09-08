@@ -34,16 +34,28 @@ export async function creaRefreshToken(utente) {
 // 3. Le opzioni del cookie
 // le mettiamo qui cosi' sono identiche in tutti i posti dove serve, senza copiarle.
 export function opzioniCookie() {
+  // Online il FRONTEND sta su vercel.app
+  // il BACKEND su onrender.com
+  //  Il cookie deve viaggiare fra due siti, e per farlo il browser pretende ("sameSite:none" e poi "secure:true")
+
+  //sul mio computer la variabile NODE_ENV si trova nel file .env e contiene la parola development
+  //il codice vuole capire dove sta girando se sul portatile o su Render
+  //allora il codice fa il confronto NODE_ENV===production, vede che "developement" e non "production"
+  //e allora inProduzione risulta falsa quindi "sameSite:lax", quello che mi serve quando sono in locale
+  //perchè sia frontend che backend sono in localhost
+  //su Render la variabile NODE_ENV la creo io e la imposto come "production" quindi sameSite:none
+  const inProduzione = process.env.NODE_ENV === 'production';
   return {
-    // JavaScript non lo puo' leggere
-    httpOnly: true, //è molto importante perchè
-    //nei cookie ci saranno informazioni legate ai token, ad esempio dell'admin,
-    //quindi se qualunque pagina potesse accederci, potrebbero poi fare quello che vogliono con quel token
-    //invece con httpOnly:true solo il server può leggere
+    httpOnly: true, // il JavaScript della pagina non lo vede
+    // secure: il cookie viaggia solo su HTTPS
+    secure: inProduzione,
 
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-
+    //di norma (con "lax") il browser allega il cookie solo alle richieste dirette allo stesso sito che lha creato
+    //con "none" diciamo "manda il cookie anche verso siti diversi"
+    sameSite: inProduzione ? 'none' : 'lax',
+    //in locale con "lax" il cookie parte solo verso lo stesso sito che l'ha creato, quindi
+    //nel nostro caso frontend e backend sono entrambi "localhost" quindi verrebbero inviati/ricevuti
+    //online però abbiamo BACKEND (onrender.com) e FRONTEND (vercel.app)
     maxAge: DURATA_REFRESH,
   };
 }

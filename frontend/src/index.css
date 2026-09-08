@@ -1,9 +1,7 @@
-/* ==========================================================
-1. LE VARIABILI
+/* LE VARIABILI
 I colori del progetto scritti una volta sola. Piu' avanti
 li richiamo con var(--nome). Se domani voglio cambiare il
-blu del progetto, cambio una riga qui e cambia ovunque
-  ========================================================== */
+blu del progetto, cambio una riga qui e cambia ovunque */
 :root {
   --testo: #1f2328;
   --tenue: #656d76;
@@ -12,9 +10,6 @@ blu del progetto, cambio una riga qui e cambia ovunque
   --primario: #1f6feb;
   --errore: #c8102e;
 }
-/* ==========================================================
-   2. UN PICCOLO AZZERAMENTO
-   ========================================================== */
 /* Con border-box, quando dico "largo 100%" la larghezza
    comprende bordo e padding. Senza, li aggiungerebbe fuori
    e i campi uscirebbero dal riquadro. */
@@ -29,18 +24,14 @@ body {
   color: var(--testo);
   background: var(--sfondo);
 }
-/* ==========================================================
-   3. IL CONTENITORE CENTRALE
-   ========================================================== */
+/*IL CONTENITORE CENTRALE*/
 .contenitore {
   max-width: 760px; /* oltre questa larghezza le righe sono
                          faticose da leggere */
   margin: 0 auto; /* auto a destra e sinistra = centrato */
   padding: 24px 16px 60px;
 }
-/* ==========================================================
-   4. LA BARRA IN ALTO
-   ========================================================== */
+/*LA BARRA IN ALTO*/
 .barra {
   display: flex; /* i figli si mettono in riga */
   justify-content: space-between; /* uno a sinistra, uno a destra */
@@ -59,9 +50,7 @@ body {
   color: var(--tenue);
   font-size: 14px;
 }
-/* ==========================================================
-   5. TITOLI
-   ========================================================== */
+/*TITOLI*/
 h1 {
   font-size: 24px;
   margin: 0 0 8px;
@@ -71,9 +60,7 @@ h3 {
   font-size: 18px;
   margin: 24px 0 8px;
 }
-/* ==========================================================
-   6. I RIQUADRI BIANCHI
-   ========================================================== */
+/*I RIQUADRI BIANCHI*/
 .riquadro {
   background: #fff;
   border: 1px solid var(--bordo);
@@ -81,9 +68,7 @@ h3 {
   padding: 16px;
   margin-bottom: 16px;
 }
-/* ==========================================================
-   7. LE LISTE (ticket e commenti)
-   ========================================================== */
+/*LE LISTE (ticket e commenti)*/
 .lista,
 .commenti {
   list-style: none; /* via i pallini */
@@ -117,12 +102,10 @@ h3 {
 .autore {
   font-weight: 600;
 }
-/* ==========================================================
-   8. LE ETICHETTE DI STATO
+/* LE ETICHETTE DI STATO
    Una classe di base uguale per tutti, piu' una classe che
    cambia solo il colore. In React la seconda la costruisco
-   con 'stato-' + ticket.stato.
-   ========================================================== */
+   con 'stato-' + ticket.stato*/
 .stato {
   display: inline-block;
   font-size: 12px;
@@ -149,9 +132,7 @@ h3 {
 .stato-chiuso {
   background: #656d76;
 }
-/* ==========================================================
-   9. I FORM
-    ========================================================== */
+/* I FORM */
 .campo {
   margin-bottom: 12px;
 }
@@ -182,9 +163,7 @@ select:focus {
   outline: 2px solid var(--primario);
   outline-offset: 1px;
 }
-/* ==========================================================
-   10. I BOTTONI
-   ========================================================== */
+/*I BOTTONI */
 button {
   font: inherit;
   cursor: pointer; /* la manina invece della freccia */
@@ -207,9 +186,7 @@ button[type='submit'] {
 button[type='submit']:hover {
   opacity: 0.9;
 }
-/* ==========================================================
-   11. I MESSAGGI DI ERRORE
-   ========================================================== */
+/*I MESSAGGI DI ERRORE*/
 .errore {
   background: #fdf1f2;
   border: 1px solid #f3c7cd;
@@ -222,11 +199,9 @@ button[type='submit']:hover {
   color: var(--tenue);
   font-size: 14px;
 }
-/* ==========================================================
-   12. SCHERMI PICCOLI
+/*SCHERMI PICCOLI
    Sotto i 600px di larghezza valgono anche queste regole,
-   che sovrascrivono quelle di sopra.
-   ========================================================== */
+   che sovrascrivono quelle di sopra.*/
 @media (max-width: 600px) {
   .contenitore {
     padding: 16px 12px 40px;

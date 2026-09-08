@@ -14,7 +14,7 @@ function App() {
             da Routes: cosi' non e' legata a nessun indirizzo e
             resta ferma mentre il contenuto sotto cambia. */}
         <Barra />
-        {/* Il contenitore centra tutto e limita la larghezza. */}
+        {/* Il contenitore centra tutto e limita la larghezza */}
         <div className="contenitore">
           <Routes>
             <Route path="/login" element={<Login />} />
