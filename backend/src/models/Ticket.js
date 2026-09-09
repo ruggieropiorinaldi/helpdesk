@@ -16,12 +16,12 @@ const ticketSchema = new mongoose.Schema(
     },
     categoria: {
       type: String,
-      enum: ['hardware', 'software', 'rete', 'account', 'altro'], //sono ammessi solo questi valori
+      enum: ['hardware', 'software', 'rete', 'altro'], //sono ammessi solo questi valori
       default: 'altro', //valore di default se il campo non viene passato
     },
     priorita: {
       type: String,
-      enum: ['bassa', 'media', 'alta', 'urgente'],
+      enum: ['bassa', 'media', 'alta'],
       default: 'media',
     },
     stato: {
@@ -41,6 +41,13 @@ const ticketSchema = new mongoose.Schema(
       //serve per indicare il tecnico a cui è stato affidato
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User', //quindi fa sempre riferimento a un oggetto (User, con ruolo "tecnico")
+      default: null,
+    },
+
+    // Quando il ticket e' stato chiuso. Serve per le statistiche
+    // (tempo medio di risoluzione) e resta null finche' e' aperto.
+    closedAt: {
+      type: Date,
       default: null,
     },
   },
